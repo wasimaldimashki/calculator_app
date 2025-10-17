@@ -60,19 +60,13 @@ class CalculatorCubit extends Cubit<CalculatorState> {
 
     // Build the new full expression string
     String newExpression = currentExpression + charForCalc;
-    String newResult = state.result;
-    if (state.result == state.expression && !['(', ')'].contains(buttonText)) {
-      newExpression = charForCalc;
-      newResult = '0';
-    } else {
-      newExpression = currentExpression + charForCalc;
-    }
+
     // Update the state
     emit(
       state.copyWith(
         expression: newExpression,
         // Display the full expression as the user types
-        result: newResult,
+        result: newExpression.isEmpty ? '0' : newExpression,
       ),
     );
   }
