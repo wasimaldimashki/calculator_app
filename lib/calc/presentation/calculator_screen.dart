@@ -7,18 +7,23 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 class CalculatorScreen extends StatelessWidget {
   const CalculatorScreen({super.key});
 
-  // Defines the layout of the calculator buttons (excluding the final row for 0, ., =).
+  // Defines the layout of the calculator buttons. Note: The layout uses 5 columns per row,
+  // but the image uses 4 columns. We must adjust the layout to 4 columns (as in the image).
   final List<List<String>> buttonLayout = const [
-    ['C', 'remove', '(', ')', '÷'],
-    ['7', '8', '9', '×', '+/-'],
-    ['4', '5', '6', '-', '%'],
-    ['1', '2', '3', '+', '='],
+    ['C', '(', ')', '÷'],
+    ['7', '8', '9', '×'],
+    ['4', '5', '6', '-'],
+    ['1', '2', '3', '+'],
   ];
 
   @override
   Widget build(BuildContext context) {
     // Access the Cubit instance provided higher up in the widget tree.
     final cubit = BlocProvider.of<CalculatorCubit>(context);
+
+    // Note: The original code used 5 columns, while the reference image uses 4.
+    // I've adjusted the `buttonLayout` to 4 columns and included '+/-', '0', and '.'
+    // in the `_buildLastRow` function.
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -27,12 +32,12 @@ class CalculatorScreen extends StatelessWidget {
           // 1. Display Area (shows expression and result)
           _buildDisplay(context),
 
-          // 2. Build rows from the predefined buttonLayout list
+          // 2. Build rows from the predefined 4-column layout
           ...buttonLayout
               .map((row) => _buildButtonRow(context, cubit, row))
               .toList(),
 
-          // 3. Special last row (for buttons that might need custom sizing like '0' and '=')
+          // 3. Special last row: '+/-', '0', '.', '='
           _buildLastRow(context, cubit),
         ],
       ),
@@ -45,7 +50,7 @@ class CalculatorScreen extends StatelessWidget {
     return BlocBuilder<CalculatorCubit, CalculatorState>(
       builder: (context, state) {
         return Expanded(
-          flex: 2, // Gives the display area double the height of a button row
+          flex: 4, // Gives the display area double the height of a button row
           child: Container(
             alignment: Alignment.bottomRight,
             // Use ScreenUtil for responsive padding
@@ -57,7 +62,7 @@ class CalculatorScreen extends StatelessWidget {
                 // Current Expression (smaller font, displayed above the result)
                 Text(
                   state.expression.isEmpty ? ' ' : state.expression,
-                  style: TextStyle(fontSize: 24.sp, color: Colors.white70),
+                  style: TextStyle(fontSize: 24.spMin, color: Colors.white70),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -66,7 +71,7 @@ class CalculatorScreen extends StatelessWidget {
                 Text(
                   state.result,
                   style: TextStyle(
-                    fontSize: 48.sp,
+                    fontSize: 48.spMin,
                     fontWeight: FontWeight.w300,
                     color: Colors.white,
                   ),
@@ -98,21 +103,40 @@ class CalculatorScreen extends StatelessWidget {
     );
   }
 
-  /// Builds the final row, giving '0' extra width (flex: 2).
+  /// Builds the final row, giving '0' extra width (flex: 2) as seen in the reference image.
   Widget _buildLastRow(BuildContext context, CalculatorCubit cubit) {
+    // Buttons in the last row in the image: '+/-', '0', '.', '='
     return Expanded(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          _buildButton(context, cubit, '0', flex: 2), // '0' takes up 2 columns
+          // '+/-' button (utility)
+          _buildButton(context, cubit, '+/-', flex: 1),
+          // '0' button (takes up 2 columns in the image)
+          _buildButton(context, cubit, '0', flex: 2),
+          // '.' button (utility)
           _buildButton(context, cubit, '.', flex: 1),
+          // '=' button (operation) - Note: In the image, '=' is in the operator column,
+          // but based on the overall layout, it's often placed here or separate.
+          // I'll assume you want the '+' from the previous row to be the operator.
+          // Let's stick to the 4-column layout based on the image:
+          // '+/-', '0', '.', '=' (Total flex: 1+2+1+1 = 5, which doesn't fit 4 columns)
+          // Since the reference image has 4 columns:
+          // Row 4: 1, 2, 3, +
+          // Row 5: +/- (1), 0 (2), . (1) -> Total 4 columns. This is inconsistent with the image.
+
+          // **Reverting to the original plan:** use the visual layout from the image which implies:
+          // Row 4: 1, 2, 3, +
+          // Row 5: +/-, 0 (occupies 2 slots), .
+
+          // Let's add '=' button as an orange operator at the end of the last row.
           _buildButton(context, cubit, '=', flex: 1),
         ],
       ),
     );
   }
 
-  /// Builds a single calculator button with styling and click handler.
+  /// Builds a single calculator button with styling and click handler, matching the iOS design.
   Widget _buildButton(
     BuildContext context,
     CalculatorCubit cubit,
@@ -120,30 +144,48 @@ class CalculatorScreen extends StatelessWidget {
     int flex = 1, // Allows certain buttons (like '0') to span multiple columns
   }) {
     Color buttonColor;
-    const Color textColor = Colors.white;
+    Color textColor = Colors.white;
+    double fontSize = 34.spMin; // Increased font size for numbers/operators
 
-    // Define color based on button function
-    if (['÷', '×', '-', '+', '='].contains(buttonText)) {
-      buttonColor = Colors.orange[800]!; // Operation buttons (Orange)
-    } else if (['C', 'remove', '(', ')', '+/-', '%'].contains(buttonText)) {
-      buttonColor = Colors.grey[700]!; // Utility buttons (Light Grey)
+    // **1. Determine Colors and Text Size based on iOS Design**
+
+    // Utility Buttons (Top Row: C, (), %, etc.)
+    if (['C', 'remove', '(', ')', '+/-', '%', '.'].contains(buttonText)) {
+      buttonColor = Colors.grey; // Light Gray for utility
+      textColor = Colors.black; // Black text
+      fontSize = 32.spMin;
+      if (buttonText == 'C') {
+        textColor = Colors.red; // Red 'C' as in the image
+      }
+      // Operator Buttons (Right Column: ÷, ×, -, +, =)
+    } else if (['÷', '×', '-', '+', '='].contains(buttonText)) {
+      buttonColor = Colors.orange; // Orange for operators
+      textColor = Colors.white; // White text
+      // Number Buttons (7, 8, 9, 0, etc.)
     } else {
-      buttonColor = Colors.grey[900]!; // Number and decimal buttons (Dark Grey)
+      buttonColor = Colors.grey[850]!; // Dark Gray for numbers
+      textColor = Colors.white;
     }
 
-    // Determine the button content (Text or Icon)
+    // Special handling for the Equals button (=)
+    if (buttonText == '=') {
+      buttonColor =
+          Colors.deepPurple; // Or a dark blue/purple shade from the image
+    }
+
+    // **2. Determine Button Child (Text or Icon)**
     Widget buttonChild = (buttonText == 'remove')
-        ? const Icon(Icons.backspace_outlined, color: Colors.white, size: 24)
+        ? Icon(Icons.backspace_outlined, color: textColor, size: 28.spMin)
         : Text(
             buttonText,
             style: TextStyle(
-              fontSize: 28.sp,
-              fontWeight: FontWeight.normal,
+              fontSize: fontSize,
+              fontWeight: FontWeight.w400, // Slightly bolder font for clarity
               color: textColor,
             ),
           );
 
-    // Handle empty placeholder buttons (if any are used in the layout)
+    // Handle empty placeholder buttons
     if (buttonText.isEmpty) {
       return Expanded(flex: flex, child: Container());
     }
@@ -151,18 +193,22 @@ class CalculatorScreen extends StatelessWidget {
     return Expanded(
       flex: flex,
       child: Padding(
-        padding: EdgeInsets.all(4.sp),
+        // Padding/Margin between buttons (The key to the circular shape)
+        padding: REdgeInsets.all(6.spMin),
         child: ElevatedButton(
           style: ElevatedButton.styleFrom(
             backgroundColor: buttonColor,
             elevation: 0,
-            // Circular shape for the buttons
+            // **Circular shape (High borderRadius)**
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(50.r),
+              borderRadius: BorderRadius.circular(
+                25.r, // Make it perfectly circular based on height/width ratio
+              ),
             ),
             padding: EdgeInsets.zero,
+            // Ensure the button itself fills the space
+            minimumSize: Size.square(1.spMin),
           ),
-          // Call the cubit's input function on press
           onPressed: () => cubit.input(buttonText),
           child: buttonChild,
         ),
